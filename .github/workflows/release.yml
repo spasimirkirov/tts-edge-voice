@@ -1,0 +1,46 @@
+name: Release
+
+# Push a tag like v1.0.1 (it must match "version" in manifest.json) to build the exe and
+# publish a GitHub release with the ready-to-import plugin zip.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check tag matches manifest version
+        shell: pwsh
+        run: |
+          $version = (Get-Content manifest.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} does not match manifest.json version $version"
+          }
+
+      - name: Build plugin zip
+        shell: pwsh
+        run: ./build_exe.ps1 -Clean -Python python
+
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          ./dist/EdgeVoiceTTS.exe --voice en-US-AriaNeural --text "Release smoke test." --output dist/smoke.mp3
+          if ($LASTEXITCODE -ne 0) { throw "synthesis failed" }
+          if ((Get-Item dist/smoke.mp3).Length -lt 1000) { throw "smoke.mp3 is too small" }
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
