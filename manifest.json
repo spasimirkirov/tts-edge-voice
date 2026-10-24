@@ -1,6 +1,6 @@
 {
   "plugin_name": "Edge TTS Provider",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engine_type": "cli_wrapper",
   "executable": "EdgeVoiceTTS.exe",
   "commands": {
@@ -11,8 +11,14 @@
     "catalog_path": "voices.json"
   },
   "capabilities": {
-    "tuning": ["speed", "pitch"]
+    "tuning": [
+      "speed",
+      "pitch"
+    ]
   },
   "output_format": "mp3",
-  "author": "spasimirkirov"
+  "author": "spasimirkirov",
+  "update": {
+    "github": "spasimirkirov/tts-edge-voice"
+  }
 }

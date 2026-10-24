@@ -57,7 +57,7 @@ def run(coroutine):
 
 
 def voices_catalog(voices: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    """Pal Engine voices.json entries: id (ShortName), name, locale, gender."""
+    """One entry per voice: id (ShortName), name, locale, language, gender."""
     catalog = []
     for voice in voices:
         short_name = str(voice.get("ShortName") or "").strip()
@@ -68,15 +68,37 @@ def voices_catalog(voices: List[Dict[str, str]]) -> List[Dict[str, str]]:
         # "Microsoft Aria Online (Natural) - English (United States)" -> "Aria"
         match = re.match(r"^Microsoft\s+(.+?)\s+Online", friendly)
         display = match.group(1) if match else short_name.rsplit("-", 1)[-1].replace("Neural", "")
+        # "... - Bulgarian (Bulgaria)" -> "Bulgarian (Bulgaria)": the language and region the host
+        # groups voices by. The locale code (bg-BG) when the name has no such part.
+        language = friendly.rsplit(" - ", 1)[-1].strip() if " - " in friendly else locale
         catalog.append({
             "id": short_name,
             "name": f"{display} ({locale})" if locale else display,
             "locale": locale,
+            "language": language,
             "gender": str(voice.get("Gender") or "").strip().lower(),
         })
     catalog.sort(key=lambda entry: (entry["locale"], entry["name"]))
     return catalog
 
 
+# The categories Pal Engine fills its voice slots from. Edge has only female and male voices;
+# "neutral" (for characters with a neutral gender) offers every voice.
+CATEGORIES = ("female", "male", "neutral")
+
+
+def categorized_catalog(catalog: List[Dict[str, str]]) -> Dict[str, list]:
+    """voices.json for the host: {"categories": [{"category": ..., "voices": [...]}, ...]}."""
+    return {
+        "categories": [
+            {
+                "category": category,
+                "voices": catalog if category == "neutral" else [v for v in catalog if v["gender"] == category],
+            }
+            for category in CATEGORIES
+        ]
+    }
+
+
 def dump_catalog(catalog: List[Dict[str, str]]) -> str:
-    return json.dumps(catalog, indent=2, ensure_ascii=False)
+    return json.dumps(categorized_catalog(catalog), indent=2, ensure_ascii=False)

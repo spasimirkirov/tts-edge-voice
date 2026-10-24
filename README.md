@@ -23,6 +23,21 @@ EdgeVoiceTTS.exe --export-voices-json voices.json
 
 Run from source: `pip install -r requirements.txt`, then `python main.py ...`.
 
+## Voices catalog
+
+`--export-voices-json` writes `voices.json` in categories, the way Pal Engine fills its voice slots:
+
+```json
+{ "categories": [
+  { "category": "female",  "voices": [ { "id": "bg-BG-KalinaNeural", "name": "Kalina (bg-BG)", "locale": "bg-BG", "language": "Bulgarian (Bulgaria)", "gender": "female" } ] },
+  { "category": "male",    "voices": [ ... ] },
+  { "category": "neutral", "voices": [ every voice ] }
+] }
+```
+
+Edge has only female and male voices, so `neutral` lists all of them. `language` ("English (United
+Kingdom)") is what the host groups voices by; `locale` is the code (en-GB).
+
 ## Privacy and availability
 
 This is an unofficial client. The text you convert is sent to Microsoft's speech service
@@ -31,9 +46,11 @@ it at any time.
 
 ## Releases
 
-Push a tag that matches `version` in `manifest.json` (for example `v1.0.0`) and the
-`Release` GitHub Actions workflow builds the exe, takes the voices catalog from the live
-service, and attaches the plugin zip to a new release. Build locally with `./build_exe.ps1`.
+Bump `version` in `manifest.json` and merge to `main`: the `Release` GitHub Actions workflow builds
+the exe, takes the voices catalog from the live service, and publishes release `v<version>` with
+the plugin zip. Pal Engine's integration updater (`update.github` in the manifest) offers it to
+users. A merge without a version change builds nothing; pushing a matching tag by hand also
+works. Build locally with `./build_exe.ps1`.
 
 ## License
 

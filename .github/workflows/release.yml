@@ -1,11 +1,16 @@
 name: Release
 
-# Push a tag like v1.0.1 (it must match "version" in manifest.json) to build the exe and
-# publish a GitHub release with the ready-to-import plugin zip.
+# A merge to main with a new "version" in manifest.json builds the exe and publishes a GitHub
+# release v<version> with the ready-to-import plugin zip (Pal Engine's integration updater reads
+# the latest release). A push to main without a version change builds nothing. Pushing a tag
+# like v1.1.0 by hand still works (it must match the manifest version).
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,31 +21,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Check tag matches manifest version
+      - name: Read version and decide
+        id: version
         shell: pwsh
         run: |
           $version = (Get-Content manifest.json -Raw | ConvertFrom-Json).version
-          if ("v$version" -ne "${{ github.ref_name }}") {
-            throw "Tag ${{ github.ref_name }} does not match manifest.json version $version"
+          $tag = "v$version"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          if ("${{ github.ref_type }}" -eq "tag") {
+            if ($tag -ne "${{ github.ref_name }}") {
+              throw "Tag ${{ github.ref_name }} does not match manifest.json version $version"
+            }
+            "build=true" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+          # On main: only when this version has no release yet.
+          $existing = git ls-remote --tags origin "refs/tags/$tag"
+          if ($existing) {
+            Write-Host "$tag already released: nothing to build."
+            "build=false" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "New version $version, building $tag."
+            "build=true" >> $env:GITHUB_OUTPUT
           }
 
+      - uses: actions/setup-python@v5
+        if: steps.version.outputs.build == 'true'
+        with:
+          python-version: "3.13"
+
       - name: Build plugin zip
+        if: steps.version.outputs.build == 'true'
         shell: pwsh
         run: ./build_exe.ps1 -Clean -Python python
 
       - name: Smoke test
+        if: steps.version.outputs.build == 'true'
         shell: pwsh
         run: |
           ./dist/EdgeVoiceTTS.exe --voice en-US-AriaNeural --text "Release smoke test." --output dist/smoke.mp3
           if ($LASTEXITCODE -ne 0) { throw "synthesis failed" }
           if ((Get-Item dist/smoke.mp3).Length -lt 1000) { throw "smoke.mp3 is too small" }
+          $catalog = Get-Content dist/voices.json -Raw | ConvertFrom-Json
+          if (-not $catalog.categories -or $catalog.categories.Count -lt 3) { throw "voices.json has no categories" }
 
       - name: Publish release
+        if: steps.version.outputs.build == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: dist/*.zip
           generate_release_notes: true
