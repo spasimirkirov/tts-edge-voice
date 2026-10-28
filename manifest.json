@@ -1,11 +1,12 @@
 {
   "plugin_name": "Edge TTS Provider",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "engine_type": "cli_wrapper",
   "executable": "EdgeVoiceTTS.exe",
   "commands": {
     "get_voices": "--list-voices",
-    "generate": "--voice {voice_id} --text \"{text}\" --output \"{file_path}\" --speed {speed} --pitch {pitch}"
+    "generate": "--voice {voice_id} --text \"{text}\" --output \"{file_path}\" --speed {speed} --pitch {pitch}",
+    "serve": "--serve"
   },
   "voices": {
     "catalog_path": "voices.json"
@@ -14,7 +15,8 @@
     "tuning": [
       "speed",
       "pitch"
-    ]
+    ],
+    "persistent_worker": true
   },
   "output_format": "mp3",
   "author": "spasimirkirov",
