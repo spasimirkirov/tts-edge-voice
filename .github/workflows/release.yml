@@ -64,6 +64,13 @@ jobs:
           if ((Get-Item dist/smoke.mp3).Length -lt 1000) { throw "smoke.mp3 is too small" }
           $catalog = Get-Content dist/voices.json -Raw | ConvertFrom-Json
           if (-not $catalog.categories -or $catalog.categories.Count -lt 3) { throw "voices.json has no categories" }
+          # Persistent worker (--serve): one request on stdin, the ready line and the answer on stdout.
+          $request = @{ id = '1'; action = 'synthesize'; text = 'Serve smoke test.'; voice_id = 'en-US-AriaNeural'; output = (Join-Path (Resolve-Path dist).Path 'serve.mp3') } | ConvertTo-Json -Compress
+          $lines = $request | ./dist/EdgeVoiceTTS.exe --serve
+          if (-not ($lines | Where-Object { $_ -match '"event"\s*:\s*"ready"' })) { throw "--serve printed no ready line" }
+          if (-not ($lines | Where-Object { $_ -match '"ok"\s*:\s*true' })) { throw "--serve request failed: $lines" }
+          if ((Get-Item dist/serve.mp3).Length -lt 1000) { throw "serve.mp3 is too small" }
+          Remove-Item dist/serve.mp3
 
       - name: Publish release
         if: steps.version.outputs.build == 'true'

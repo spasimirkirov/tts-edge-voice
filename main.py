@@ -31,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--list-voices", action="store_true", help="Print every voice id and exit.")
     group.add_argument("--export-voices-json", type=Path,
                        help="Write the voices catalog (id, name, locale, gender) as JSON and exit.")
+    group.add_argument("--serve", action="store_true",
+                       help="Run as Pal Engine's persistent worker: JSON requests on stdin, one per line.")
 
     parser.add_argument("-v", "--voice", default="en-US-AriaNeural", help="Voice id, e.g. en-US-AriaNeural.")
     parser.add_argument("-o", "--output", default="output.mp3", help="Output MP3 path.")
@@ -42,6 +44,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.serve:
+        from edge_voice.serve import serve
+        return serve()
 
     try:
         if args.list_voices:
@@ -57,7 +63,7 @@ def main() -> int:
             return 0
 
         if args.text is None and args.text_file is None:
-            parser.error("one of --text or --text-file is required unless --list-voices or --export-voices-json is used")
+            parser.error("one of --text or --text-file is required unless --list-voices, --export-voices-json or --serve is used")
 
         text = args.text if args.text is not None else args.text_file.read_text(encoding="utf-8")
         speed = min(2.0, max(0.5, args.speed))
